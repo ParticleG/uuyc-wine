@@ -1,11 +1,11 @@
 #!/usr/bin/bash
 set -euo pipefail
 
-readonly app_name="UU Remote"
-readonly share_dir="${UUYC_SHARE_DIR:-/usr/share/uuyc}"
+readonly app_name="UU Remote (Wine)"
+readonly share_dir="${UUYC_WINE_SHARE_DIR:-/usr/share/uuyc-wine}"
 readonly upstream_version_file="${share_dir}/upstream-version"
 readonly package_release_file="${share_dir}/package-release"
-readonly installer="${share_dir}/uuyc-installer.exe"
+readonly installer="${share_dir}/uuyc-wine-installer.exe"
 readonly wine="/usr/bin/wine"
 readonly wineboot="/usr/bin/wineboot"
 readonly winecfg="/usr/bin/winecfg"
@@ -25,7 +25,7 @@ die() {
 
 usage() {
     cat <<'EOF'
-Usage: uuyc [OPTION] [CLIENT_ARGUMENT...]
+Usage: uuyc-wine [OPTION] [CLIENT_ARGUMENT...]
 
 Options:
   --repair       Recheck and repair the Wine prefix before launching
@@ -85,15 +85,55 @@ while (($# > 0)); do
     shift
 done
 
+readonly data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+readonly state_home="${XDG_STATE_HOME:-$HOME/.local/state}"
+readonly data_dir="$data_home/uuyc-wine"
+readonly state_dir="$state_home/uuyc-wine"
+readonly xdg_prefix="$data_dir/wineprefix"
+readonly previous_data_dir="$data_home/uuyc"
+readonly previous_state_dir="$state_home/uuyc"
+readonly previous_xdg_prefix="$previous_data_dir/wineprefix"
 readonly legacy_prefix="$HOME/Games/uu-remote"
-readonly xdg_prefix="${XDG_DATA_HOME:-$HOME/.local/share}/uuyc/wineprefix"
-if [[ -n ${UUYC_WINEPREFIX:-} ]]; then
-    prefix=$UUYC_WINEPREFIX
-elif [[ -f "$legacy_prefix/drive_c/Program Files/Netease/GameViewer/GameViewer.exe" ]]; then
-    prefix=$legacy_prefix
+readonly client_relpath='drive_c/Program Files/Netease/GameViewer/GameViewer.exe'
+readonly migration_lock="${XDG_RUNTIME_DIR:-$state_home}/uuyc-wine-migration.lock"
+
+migrate_directory() {
+    local source=$1
+    local destination=$2
+    local label=$3
+
+    [[ -e "$source" ]] || return 0
+    [[ ! -e "$destination" ]] || \
+        die "Cannot migrate $label because the destination already exists: $destination"
+    mkdir -p "${destination%/*}"
+    notify_status "Migrating $label."
+    mv -- "$source" "$destination" || die "Failed to migrate $label."
+}
+
+mkdir -p "${migration_lock%/*}"
+exec 8>"$migration_lock"
+/usr/bin/flock 8
+
+if [[ -n ${UUYC_WINE_PREFIX:-} ]]; then
+    prefix=$UUYC_WINE_PREFIX
 else
+    if [[ ! -f "$xdg_prefix/$client_relpath" ]]; then
+        if [[ -f "$previous_xdg_prefix/$client_relpath" ]]; then
+            migrate_directory "$previous_data_dir" "$data_dir" "the previous uuyc Wine prefix"
+        elif [[ -f "$legacy_prefix/$client_relpath" ]]; then
+            [[ ! -e "$xdg_prefix" ]] || \
+                die "Cannot migrate the legacy Wine prefix because the destination already exists: $xdg_prefix"
+            mkdir -p "$data_dir"
+            notify_status "Migrating the legacy UU Remote Wine prefix."
+            mv -- "$legacy_prefix" "$xdg_prefix" || die "Failed to migrate the legacy Wine prefix."
+        fi
+    fi
+    if [[ -d "$previous_state_dir" && ! -e "$state_dir" ]]; then
+        migrate_directory "$previous_state_dir" "$state_dir" "the previous uuyc setup state"
+    fi
     prefix=$xdg_prefix
 fi
+/usr/bin/flock -u 8
 readonly prefix
 
 readonly install_dir="$prefix/drive_c/Program Files/Netease/GameViewer"
@@ -107,8 +147,8 @@ readonly webview_root="$prefix/drive_c/Program Files (x86)/Microsoft/EdgeWebView
 readonly webview_key='HKLM\Software\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
 readonly service_key='HKLM\System\CurrentControlSet\Services\GameViewerService'
 readonly installed_version_key='HKCU\Software\Netease\GameViewer'
-readonly stamp="$prefix/.uuyc-package-release"
-readonly state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/uuyc"
+readonly stamp="$prefix/.uuyc-wine-package-release"
+readonly legacy_stamp="$prefix/.uuyc-package-release"
 readonly setup_log="$state_dir/setup.log"
 
 mkdir -p "$state_dir"
@@ -263,6 +303,7 @@ configure_prefix() {
 
     printf '%s\n' "$package_release" >"${stamp}.tmp"
     mv -f "${stamp}.tmp" "$stamp"
+    rm -f -- "$legacy_stamp"
     notify_status "UU Remote setup completed."
 }
 
@@ -276,7 +317,7 @@ if $repair || ! prefix_current; then
 fi
 
 $setup_only && exit 0
-app_files_present || die "UU Remote is not installed correctly. Run: uuyc --repair"
+app_files_present || die "UU Remote is not installed correctly. Run: uuyc-wine --repair"
 
 server_running() {
     /usr/bin/pgrep -u "$(id -u)" -f -x -- "$server" >/dev/null 2>&1

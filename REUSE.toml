@@ -9,8 +9,8 @@ path = [
   "PKGBUILD",
   "README.md",
   "REUSE.toml",
-  "uuyc",
-  "uuyc.desktop",
+  "uuyc-wine",
+  "uuyc-wine.desktop",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 AUR package contributors"
