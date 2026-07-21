@@ -14,6 +14,7 @@ on:
       - REUSE.toml
       - uuyc-wine
       - uuyc-wine.desktop
+      - uuyc-wine.install
   workflow_dispatch:
 
 permissions:
@@ -46,6 +47,7 @@ jobs:
             REUSE.toml
             uuyc-wine
             uuyc-wine.desktop
+            uuyc-wine.install
           post_process: git config core.filemode true && chmod 755 uuyc-wine
           commit_username: ParticleG
           commit_email: particle_g@outlook.com
