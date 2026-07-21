@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - .gitignore
+      - .github/workflows/aur-publish.yml
       - .SRCINFO
       - LICENSE
       - PKGBUILD
@@ -45,6 +46,7 @@ jobs:
             REUSE.toml
             uuyc-wine
             uuyc-wine.desktop
+          post_process: git add --chmod=+x uuyc-wine
           commit_username: ParticleG
           commit_email: particle_g@outlook.com
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
