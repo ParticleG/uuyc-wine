@@ -15,6 +15,8 @@ on:
       - uuyc-wine
       - uuyc-wine.desktop
       - uuyc-wine.install
+      - uuyc-wevtapi.S
+      - uuyc-wevtapi.def
   workflow_dispatch:
 
 permissions:
@@ -48,6 +50,8 @@ jobs:
             uuyc-wine
             uuyc-wine.desktop
             uuyc-wine.install
+            uuyc-wevtapi.S
+            uuyc-wevtapi.def
           post_process: git config core.filemode true && chmod 755 uuyc-wine
           commit_username: ParticleG
           commit_email: particle_g@outlook.com
