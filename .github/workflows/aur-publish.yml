@@ -9,6 +9,8 @@ on:
       - .github/workflows/aur-publish.yml
       - .SRCINFO
       - LICENSE
+      - LICENSES/**
+      - extract-uuyc-eula.py
       - PKGBUILD
       - README.md
       - REUSE.toml
@@ -45,6 +47,8 @@ jobs:
           assets: |
             .gitignore
             LICENSE
+            LICENSES
+            extract-uuyc-eula.py
             README.md
             REUSE.toml
             uuyc-wine
