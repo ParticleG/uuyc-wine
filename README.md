@@ -109,7 +109,7 @@ The launcher applies and verifies the compatibility settings required by UU Remo
 - Microsoft Edge WebView2 Runtime from the bundled upstream installer;
 - a Windows 8 application override limited to `msedgewebview2.exe`;
 - a package-built native `wevtapi.dll` compatibility layer that makes unsupported Windows Event Log queries fail cleanly instead of entering Wine's unimplemented `EvtOpenPublisherMetadata` stub;
-- `UseTakeFocus=N` for Wine's X11 driver;
+- removal of any stale `UseTakeFocus=N` X11 driver override written by earlier releases; Wine must negotiate focus with the window manager (`WM_TAKE_FOCUS`), because the direct X focus path makes UU Remote's main and session windows fight over focus at high frequency after the screen blanks and wakes;
 - `GameViewerService` explicitly started and verified as `RUNNING`;
 - `GameViewerHealthd.exe` started in the interactive Wine session to supervise the server;
 - `GameViewerServer.exe` started after the supervisor and before `GameViewer.exe`;
@@ -144,6 +144,44 @@ Useful version information:
 uuyc-wine --version
 wine --version
 ```
+
+### The session breaks after the screen blanks and wakes
+
+With a remote session window open, letting the screen blank and then waking it
+used to leave the main window and the session window fighting over focus many
+times per second, so no input landed anywhere. The trigger was the
+`UseTakeFocus=N` X11 driver override written by earlier package releases: it
+makes Wine assign X input focus directly instead of going through the window
+manager, and Wayland compositors such as KWin reassert their own focus choice
+on wake. The launcher now removes that override during setup, and package
+release `4.33.0.8907-10` applies the removal to existing prefixes through the
+normal stamp-based repair on the next launch.
+
+If a focus regression appears that the old override used to fix, it can be
+restored for testing:
+
+```bash
+WINEPREFIX="${XDG_DATA_HOME:-$HOME/.local/share}/uuyc-wine/wineprefix" \
+    wine reg add 'HKCU\Software\Wine\X11 Driver' \
+    /v UseTakeFocus /t REG_SZ /d N /f
+```
+
+The launcher only deletes the value when it reapplies setup, so a value added
+afterwards survives until the next package update.
+
+### Maximizing the session window sometimes leaves the video unscaled
+
+Occasionally the window grows while the remote video keeps its old size until
+the next resize. Wine and KWin still race around maximize requests: Wine may
+receive a configure echo for the restore geometry right after the maximize
+request, and UU Remote's own resize handling can latch the stale size. This is
+an upstream Wine and KWin interplay, not a prefix setting, and it also affects
+the first maximize shortly after a window appears. Workarounds:
+
+- resize the window again, or leave and re-enter maximize; the next size
+  change re-runs the video layout;
+- report the Wine and KWin versions in use when filing an issue, since newer
+  releases keep improving this path.
 
 When reporting a problem, include the package release, Wine version, the relevant setup log section, and whether a custom `UUYC_WINE_PREFIX` is in use. Do not publish account credentials, device identifiers, remote-assistance codes, or complete application logs without reviewing them first.
 
