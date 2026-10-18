@@ -506,9 +506,15 @@ configure_prefix() {
         /v Version /t REG_SZ /d win8 /f; then
         die "Failed to configure WebView2 compatibility. See $setup_log"
     fi
-    if ! run_logged "$wine" reg add 'HKCU\Software\Wine\X11 Driver' \
-        /v UseTakeFocus /t REG_SZ /d N /f; then
-        die "Failed to configure Wine focus handling. See $setup_log"
+    # Releases before 4.33.0.8907-10 wrote UseTakeFocus=N here. That makes
+    # Wine assign X input focus directly instead of negotiating with the
+    # window manager, so when the screen blanks and wakes while a remote
+    # session window is open, UU Remote's main and session windows fight over
+    # focus at high frequency and the session becomes unusable. Remove the
+    # override so Wine goes through the WM_TAKE_FOCUS protocol again.
+    if ! run_logged "$wine" reg delete 'HKCU\Software\Wine\X11 Driver' \
+        /v UseTakeFocus /f; then
+        printf 'No stale UseTakeFocus override present.\n' >>"$setup_log"
     fi
 
     webview_version=$(registry_value "$webview_key" pv || true)
