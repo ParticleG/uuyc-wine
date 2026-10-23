@@ -169,7 +169,6 @@ canonicalize_prefix() {
 
 stop_prefix() {
     local prefix_path=$1
-    local quiet=${2:-false}
     local status
 
     if WINEPREFIX="$prefix_path" WINEDEBUG=-all \
@@ -181,7 +180,7 @@ stop_prefix() {
             1)
                 if WINEPREFIX="$prefix_path" WINEDEBUG=-all \
                     /usr/bin/timeout 5s "$wineserver" -w >/dev/null 2>&1; then
-                    $quiet || printf 'No running UU Remote wineserver remains for: %s\n' "$prefix_path"
+                    printf 'No running UU Remote wineserver remains for: %s\n' "$prefix_path"
                     return 0
                 else
                     status=$?
@@ -206,10 +205,8 @@ stop_prefix() {
 
     if WINEPREFIX="$prefix_path" WINEDEBUG=-all \
         /usr/bin/timeout 5s "$wineserver" -w >/dev/null 2>&1; then
-        if ! $quiet; then
-            notify_status "UU Remote stopped."
-            printf 'UU Remote stopped.\n'
-        fi
+        notify_status "UU Remote stopped."
+        printf 'UU Remote stopped.\n'
         return 0
     else
         status=$?
@@ -591,45 +588,6 @@ ensure_wine_process_running() {
     return 1
 }
 
-updater_process_running() {
-    local canonical_prefix environment pid cmdline
-
-    canonical_prefix=$(/usr/bin/readlink -f -- "$prefix" 2>/dev/null) || return 1
-
-    for pid in /proc/[0-9]*; do
-        [[ $pid != "/proc/$$" && -r $pid/cmdline ]] || continue
-        cmdline=$(/usr/bin/tr '\0' ' ' <"$pid/cmdline" 2>/dev/null) || continue
-        [[ $cmdline == *'Upgrade.exe'* || $cmdline == *'UURemote_Setup_'* ]] || continue
-        environment="$pid/environ"
-        [[ -r $environment ]] || continue
-        process_uses_prefix "$environment" "$canonical_prefix" && return 0
-    done
-    return 1
-}
-
-stop_background_processes() {
-    local image
-
-    for image in GameViewerService.exe GameViewerHealthd.exe \
-        GameViewerServer.exe GameViewerLauncher.exe crashpad_handler.exe \
-        msedgewebview2.exe; do
-        run_logged "$wine" taskkill /f /t /im "$image" || true
-    done
-}
-
-wait_for_updater_exit() {
-    local waited=0
-
-    while updater_process_running; do
-        if ((waited >= 600)); then
-            printf 'UU Remote updater is still running after 10 minutes; stopping it.\n'
-            return 0
-        fi
-        sleep 1
-        waited=$((waited + 1))
-    done
-}
-
 launch_client() {
     local client_pid client_status
 
@@ -643,19 +601,10 @@ launch_client() {
     fi
     trap - INT TERM
 
-    # UU Remote's client is single-instance: after it exits, any process still
-    # mapping the client image is a draining child of this session. Give them
-    # a bounded grace period before the teardown reclaims the Wine session.
-    for ((attempt = 0; attempt < 150; attempt++)); do
-        wine_image_running "$client" || wine_image_running "$client_image" || break
-        sleep 0.2
-    done
-
-    # Stop the daemons first so the in-app updater's install step can replace
-    # their files, but keep Wine alive until the updater finishes.
-    stop_background_processes
-    wait_for_updater_exit
-    stop_prefix "$prefix" true
+    # UU Remote's background service, supervisor, and server stay resident
+    # after the client UI exits: closing or losing the main window must not
+    # end active remote sessions. They keep the prefix's wineserver alive
+    # until the user quits UU Remote from the taskbar or runs uuyc-wine --stop.
     exit "$client_status"
 }
 
