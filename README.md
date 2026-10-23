@@ -115,6 +115,7 @@ The launcher applies and verifies the compatibility settings required by UU Remo
 - `GameViewerServer.exe` started after the supervisor and before `GameViewer.exe`;
 - Wine menu generation disabled so the upstream installer cannot replace the packaged desktop and URI entries;
 - a prefix-local Windows Desktop directory so the installer cannot write shortcuts into the host desktop.
+- resident background session: the launcher leaves `GameViewerService`, `GameViewerHealthd.exe`, `GameViewerServer.exe`, and WebView2 running after the client UI exits, so closing or losing the main window never ends this machine's availability as a controlled end. Quit UU Remote from its taskbar entry or run `uuyc-wine --stop` to end the background session. A `uuremote:` dispatch returns right after handing off the URI.
 
 The installed Windows application remains under the per-user prefix because UU Remote includes its own updater and writes runtime data beside the application.
 

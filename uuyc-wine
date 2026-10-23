@@ -588,6 +588,26 @@ ensure_wine_process_running() {
     return 1
 }
 
+launch_client() {
+    local client_pid client_status
+
+    "$wine" "$client" "${client_args[@]}" &
+    client_pid=$!
+    trap 'kill -TERM "$client_pid" 2>/dev/null || true' INT TERM
+    if wait "$client_pid"; then
+        client_status=0
+    else
+        client_status=$?
+    fi
+    trap - INT TERM
+
+    # UU Remote's background service, supervisor, and server stay resident
+    # after the client UI exits: closing or losing the main window must not
+    # end active remote sessions. They keep the prefix's wineserver alive
+    # until the user quits UU Remote from the taskbar or runs uuyc-wine --stop.
+    exit "$client_status"
+}
+
 ensure_service_running || \
     die "GameViewerService did not reach RUNNING state under Wine. See $setup_log"
 
@@ -603,4 +623,4 @@ cd "$install_dir"
 if $uri_requested; then
     exec "$wine" start "$uri"
 fi
-exec "$wine" "$client" "${client_args[@]}"
+launch_client

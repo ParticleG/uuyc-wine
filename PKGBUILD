@@ -1,8 +1,8 @@
 # Maintainer: ParticleG <particle_g@outlook.com>
 
 pkgname=uuyc-wine
-pkgver=4.33.0.8907
-pkgrel=9
+pkgver=4.43.1.3614
+pkgrel=1
 pkgdesc='Wine compatibility package for NetEase UU Remote (网易UU远程)'
 arch=('x86_64')
 url='https://uuyc.163.com/'
@@ -15,7 +15,7 @@ install="$pkgname.install"
 _eula_semantic_sha256='5ac767dad456d304ed9be4a089b0bb26f6942544112a1842c720b1edcb7f44fd'
 
 source=(
-  "$pkgname-${pkgver}.exe::https://a56.gdl.netease.com/UURemote_Setup_${pkgver}_0715193023_gwqd.exe"
+  "$pkgname-${pkgver}.exe::https://a56.gdl.netease.com/UURemote_Setup_${pkgver}_1016022822_gwqd.exe"
   'uuyc-wine'
   'uuyc-wevtapi.S'
   'uuyc-wevtapi.def'
@@ -26,8 +26,8 @@ source=(
 )
 noextract=("$pkgname-${pkgver}.exe")
 sha256sums=(
-  '5e3cfe8cfdc6552c1fc26f1ad2c94df133ca20dc3c45c23155358c32ac9bf53e'
-  'f1df7ab0ec159e8c99759a8088c9fd3fcda93efbf611350dd019dee72ead0c7c'
+  '9a69473798ad4861b966607859adbba9c8d1b2a2a0ea9e22bba7f14969656263'
+  'b497d8d94f7bc0a5d8d6d441dad666d0b487c993c29d7ee222a7531380afefe6'
   'b24c466c330b26aa0a9ef22577a1681705e9b1d092f59a7adda602ef31623ab4'
   'c56c72c159f47b1b812943cd2095a0f64d2c4972f3c7a1a7f75e994c7b52f691'
   'e91389eac5bc82c8398518cc7fd04ffbcc76ed009fcbec9f951015340a9ca2b3'
@@ -55,7 +55,7 @@ prepare() {
     "$_eula_semantic_sha256"
 
   rm -rf "$srcdir/$pkgname-icon"
-  7z x -y -o"$srcdir/$pkgname-icon" \
+  7z x -y -tpe -o"$srcdir/$pkgname-icon" \
     "$srcdir/$pkgname-${pkgver}.exe" '.rsrc/ICON/6'
 }
 
