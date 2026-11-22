@@ -572,11 +572,12 @@ ensure_service_running() {
 
 ensure_wine_process_running() {
     local executable=$1
+    local working_dir=$2
     local attempt
 
     if ! wine_process_running "$executable"; then
         (
-            cd "$install_dir/bin"
+            cd "$working_dir"
             nohup "$wine" "$executable" >/dev/null 2>&1 &
         )
     fi
@@ -593,9 +594,11 @@ ensure_service_running || \
 
 # Wine's service process cannot launch interactive child processes, so start
 # the upstream supervisor and server explicitly in this user session.
-ensure_wine_process_running "$healthd" || \
+# Wine keeps the current directory open without delete sharing. Healthd stays
+# alive during self-updates, so its working directory must be outside bin.
+ensure_wine_process_running "$healthd" "$install_dir" || \
     die "GameViewerHealthd.exe did not start under Wine."
-ensure_wine_process_running "$server" || \
+ensure_wine_process_running "$server" "$install_dir/bin" || \
     die "GameViewerServer.exe did not start under Wine."
 
 sleep 1
