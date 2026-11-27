@@ -108,13 +108,14 @@ The launcher applies and verifies the compatibility settings required by UU Remo
 - a 64-bit Wine prefix configured as Windows 10;
 - Microsoft Edge WebView2 Runtime from the bundled upstream installer;
 - a Windows 8 application override limited to `msedgewebview2.exe`;
-- a package-built native `wevtapi.dll` compatibility layer that makes unsupported Windows Event Log queries fail cleanly instead of entering Wine's unimplemented `EvtOpenPublisherMetadata` stub;
+- a package-built native `wevtapi.dll` compatibility layer installed in `C:\windows\system32\wevtapi.dll` so unsupported Windows Event Log queries fail cleanly instead of entering Wine's unimplemented `EvtOpenPublisherMetadata` stub, and so UU Remote self-updates that replace `bin/` do not remove the shim;
 - `UseTakeFocus=N` for Wine's X11 driver;
 - `GameViewerService` explicitly started and verified as `RUNNING`;
 - `GameViewerHealthd.exe` started in the interactive Wine session to supervise the server;
 - `GameViewerServer.exe` started after the supervisor and before `GameViewer.exe`;
 - Wine menu generation disabled so the upstream installer cannot replace the packaged desktop and URI entries;
-- a prefix-local Windows Desktop directory so the installer cannot write shortcuts into the host desktop.
+- a prefix-local Windows Desktop directory so the installer cannot write shortcuts into the host desktop;
+- host proxy environment variables (`http_proxy`, `HTTP_PROXY`, `https_proxy`, `HTTPS_PROXY`, `all_proxy`, `ALL_PROXY`) cleared before launching UU Remote so Wine's `winhttp` does not route `Upgrade.exe`'s local `127.0.0.1` `aria2c` RPC traffic through a host proxy (host proxy variables remain available during initial WebView2 setup, and UU Remote has its own in-app proxy settings).
 
 The installed Windows application remains under the per-user prefix because UU Remote includes its own updater and writes runtime data beside the application.
 

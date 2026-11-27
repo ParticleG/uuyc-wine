@@ -307,7 +307,8 @@ readonly client="$install_dir/GameViewer.exe"
 readonly client_image="$install_dir/bin/GameViewer.exe"
 readonly server="$install_dir/bin/GameViewerServer.exe"
 readonly healthd="$install_dir/bin/GameViewerHealthd.exe"
-readonly native_wevtapi="$install_dir/bin/wevtapi.dll"
+readonly native_wevtapi="$prefix/drive_c/windows/system32/wevtapi.dll"
+readonly legacy_wevtapi="$install_dir/bin/wevtapi.dll"
 readonly webview_setup="$install_dir/bin/MicrosoftEdgeWebview2Setup.exe"
 readonly webview_root="$prefix/drive_c/Program Files (x86)/Microsoft/EdgeWebView/Application"
 readonly webview_key='HKLM\Software\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
@@ -477,6 +478,7 @@ configure_prefix() {
     if ! /usr/bin/install -m644 "$wevtapi_shim" "$native_wevtapi"; then
         die "Failed to install the Wine Event Log compatibility DLL. See $setup_log"
     fi
+    rm -f -- "$legacy_wevtapi"
 
     if ! run_logged "$wine" reg query "$service_key"; then
         die "UU Remote did not register GameViewerService. See $setup_log"
@@ -587,6 +589,12 @@ ensure_wine_process_running() {
     done
     return 1
 }
+
+# Wine's winhttp reads http_proxy/HTTP_PROXY from the environment without a
+# bypass list, routing Upgrade.exe's local 127.0.0.1 aria2c RPC through the
+# host proxy and breaking self-update downloads. UU Remote manages its own
+# proxy settings internally; host proxy vars remain available for prefix setup.
+unset http_proxy HTTP_PROXY https_proxy HTTPS_PROXY all_proxy ALL_PROXY
 
 ensure_service_running || \
     die "GameViewerService did not reach RUNNING state under Wine. See $setup_log"
